@@ -1,0 +1,25 @@
+{
+    "Author": "Iluay",
+    "Name": "Singingway",
+    "Punchline": "Ever wanted to sing along during savage progging, obliterating the ears of your static? Now you can!",
+    "Description": "Singingway displays the lyrics for the currently playing BGM on-screen, so you can sing to your heart's content.",
+    "Tags": [
+        "singingway",
+		"lyrics"
+    ],
+    "InternalName": "Singingway",
+    "AssemblyVersion": "0.1.0",
+    "TestingAssemblyVersion": "0.1.0",
+	"RepoUrl": "https://github.com/Iluay0/Singingway",
+    "ApplicableVersion": "any",
+    "DalamudApiLevel": 14,
+    "TestingDalamudApiLevel": 14,
+    "IsHide": false,
+    "IsTestingExclusive": false,
+    "DownloadCount": 67,
+    "LastUpdate": 1775739754,
+    "DownloadLinkInstall": "https://github.com/Iluay0/Singingway/releases/download/0.1.0/Singingway.zip",
+    "DownloadLinkUpdate": "https://github.com/Iluay0/Singingway/releases/download/0.1.0/Singingway.zip",
+    "DownloadLinkTesting": "https://github.com/Iluay0/Singingway/releases/download/0.1.0/Singingway.zip",
+    "IconUrl": "https://raw.githubusercontent.com/Iluay0/Singingway/main/images/icon.png",
+}

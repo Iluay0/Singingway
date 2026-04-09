@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Dalamud.NET.Sdk/13.0.0">
+    <PropertyGroup>
+        <Authors></Authors>
+        <Company></Company>
+        <Version>0.1.0</Version>
+        <Description>Ever wanted to sing along during savage progging, obliterating the ears of your static? Now you can!</Description>
+        <Copyright></Copyright>
+        <PackageProjectUrl>https://github.com/Iluay0/Singingway</PackageProjectUrl>
+        <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+        <IsPackable>false</IsPackable>
+        <TargetFramework>net10.0-windows7.0</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_04.json" />
+      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_24.json" />
+      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_25.json" />
+      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_26.json" />
+      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_27.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Penumbra.Api" Version="5.13.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Update="DalamudPackager" Version="14.0.2" />
+
+      <PackageReference Update="DotNet.ReproducibleBuilds" Version="2.0.2" />
+
+    </ItemGroup>
+</Project>
