@@ -8,7 +8,7 @@
 		"lyrics"
     ],
     "InternalName": "Singingway",
-    "AssemblyVersion": "0.2.0",
+    "AssemblyVersion": "0.2.1",
 	"RepoUrl": "https://github.com/Iluay0/Singingway",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 14,
