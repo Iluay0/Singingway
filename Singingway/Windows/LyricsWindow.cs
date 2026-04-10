@@ -9,9 +9,12 @@ namespace Singingway.Windows
     internal class LyricsWindow : Window
     {
         private const float DefaultHeight = 100f;
-        private bool positionInitialized = false;
 
+        private bool _isInitialized = false;
         private float _storedCenterX;
+        private float _currentY;
+        private float _lastWidth = -1f;
+        private float _lastHeight = -1f;
 
         public LyricsWindow() : base("Lyrics")
         {
@@ -27,21 +30,18 @@ namespace Singingway.Windows
             var nextText = lm.GetNextDisplayText();
             var nextTime = lm.GetNextTimestamp();
             var elapsed = lm.GetElapsedSeconds();
-            float backgroundOpacity = Service.configuration.BackgroundOpacityPercentage / 100.0f;
+            float backgroundOpacity = Service.Configuration.BackgroundOpacityPercentage / 100.0f;
 
-            Fonts.TitleFont.Push();
+            Fonts.TitleFont?.Push();
             var textSize = Text.CalcSize(text);
-            Fonts.TitleFont.Pop();
+            Fonts.TitleFont?.Pop();
 
-            Fonts.SubTitleFont.Push();
+            Fonts.SubTitleFont?.Push();
             var nextTextSize = Text.CalcSize(nextText);
-            Fonts.SubTitleFont.Pop();
+            Fonts.SubTitleFont?.Pop();
 
-            CalculateLayout(textSize.X, nextTextSize.X, out float targetWidth, out float mainTextScale, out float nextTextScale);
             float windowHeight = Math.Max(DefaultHeight, baseY + textSize.Y + 4f + nextTextSize.Y + 8f + 12f + 8f);
-
-            InitializeWindowPosition(targetWidth, windowHeight);
-            ImGui.SetNextWindowSize(new Vector2(targetWidth, windowHeight), ImGuiCond.FirstUseEver);
+            CalculateLayoutAndResize(textSize.X, nextTextSize.X, windowHeight, out float targetWidth, out float mainTextScale, out float nextTextScale);
 
             if (!ImGui.Begin("##LyricsWindow", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoScrollbar))
             {
@@ -49,22 +49,23 @@ namespace Singingway.Windows
                 return;
             }
 
+            InitializeWindow();
             DrawFullWindowBackground(backgroundOpacity);
-            AdjustWindowSizeAndPosition(targetWidth, windowHeight);
+
             var windowWidth = ImGui.GetWindowSize().X;
 
             DrawTotalTime(windowWidth, elapsed, lm.GetTotalDuration());
 
-            Fonts.TitleFont.Push();
+            Fonts.TitleFont?.Push();
             DrawTextLine(text, textSize, mainTextScale, windowWidth, baseY, 0xFFFFFFFF, backgroundOpacity);
-            Fonts.TitleFont.Pop();
+            Fonts.TitleFont?.Pop();
 
             float nextBaseY = baseY + textSize.Y + 4f;
             if (!string.IsNullOrEmpty(nextText))
             {
-                Fonts.SubTitleFont.Push();
+                Fonts.SubTitleFont?.Push();
                 DrawTextLine(nextText, nextTextSize, nextTextScale, windowWidth, nextBaseY, 0xFFAAAAAA, backgroundOpacity);
-                Fonts.SubTitleFont.Pop();
+                Fonts.SubTitleFont?.Pop();
             }
 
             float barBaseY = nextBaseY + nextTextSize.Y + 8f;
@@ -75,16 +76,32 @@ namespace Singingway.Windows
             ImGui.End();
         }
 
-        private void CalculateLayout(float mainWidth, float nextWidth, out float targetWidth, out float mainScale, out float nextScale)
+        private void CalculateLayoutAndResize(float mainWidth, float nextWidth, float windowHeight, out float targetWidth, out float mainScale, out float nextScale)
         {
             float padding = 40f;
-            float maxConfigWidth = Service.configuration.MaxWindowWidth;
+            float maxConfigWidth = Service.Configuration.MaxWindowWidth;
 
             float contentWidth = Math.Max(mainWidth, nextWidth) + padding;
-            targetWidth = Math.Max(Service.configuration.MinWindowWidth, Math.Min(contentWidth, maxConfigWidth));
+            targetWidth = Math.Max(Service.Configuration.MinWindowWidth, Math.Min(contentWidth, maxConfigWidth));
 
             mainScale = CalculateTextScale(mainWidth, maxConfigWidth, padding);
             nextScale = CalculateTextScale(nextWidth, maxConfigWidth, padding);
+
+            if (!_isInitialized)
+            {
+                var io = ImGui.GetIO();
+                float fallbackX = io.DisplaySize.X / 2f - targetWidth / 2f;
+                float fallbackY = io.DisplaySize.Y / 2f - windowHeight / 2f;
+
+                ImGui.SetNextWindowPos(new Vector2(fallbackX, fallbackY), ImGuiCond.FirstUseEver);
+                ImGui.SetNextWindowSize(new Vector2(targetWidth, windowHeight), ImGuiCond.FirstUseEver);
+            }
+            else if (Math.Abs(targetWidth - _lastWidth) > 0.1f || Math.Abs(windowHeight - _lastHeight) > 0.1f)
+            {
+                float newLeftX = (float)Math.Round(_storedCenterX - (targetWidth / 2f));
+                ImGui.SetNextWindowPos(new Vector2(newLeftX, _currentY), ImGuiCond.Always);
+                ImGui.SetNextWindowSize(new Vector2(targetWidth, windowHeight), ImGuiCond.Always);
+            }
         }
 
         private float CalculateTextScale(float textWidth, float maxWidth, float padding)
@@ -95,36 +112,7 @@ namespace Singingway.Windows
             {
                 scale = maxWidth / contentWidth;
             }
-            return scale * (Service.configuration.TextScalePercentage / 100f);
-        }
-
-        private void InitializeWindowPosition(float targetWidth, float windowHeight)
-        {
-            if (positionInitialized) return;
-
-            var io = ImGui.GetIO();
-
-            _storedCenterX = io.DisplaySize.X / 2f;
-
-            var centerY = io.DisplaySize.Y / 2f - windowHeight / 2f;
-            float initialLeftX = _storedCenterX - (targetWidth / 2f);
-
-            ImGui.SetNextWindowPos(new Vector2(initialLeftX, centerY), ImGuiCond.FirstUseEver);
-            positionInitialized = true;
-        }
-
-        private void AdjustWindowSizeAndPosition(float targetWidth, float windowHeight)
-        {
-            var currentSize = ImGui.GetWindowSize();
-
-            if (Math.Abs(currentSize.X - targetWidth) > 0.1f)
-            {
-                var currentPos = ImGui.GetWindowPos();
-                var newLeftX = (float)Math.Round(_storedCenterX - (targetWidth / 2f));
-
-                ImGui.SetWindowPos(new Vector2(newLeftX, currentPos.Y));
-                ImGui.SetWindowSize(new Vector2(targetWidth, windowHeight));
-            }
+            return scale * (Service.Configuration.TextScalePercentage / 100f);
         }
 
         private void DrawTextLine(string text, Vector2 originalSize, float scale, float windowWidth, float baseY, uint color, float bgOpacity)
@@ -136,7 +124,7 @@ namespace Singingway.Windows
 
             ImGui.SetWindowFontScale(scale);
 
-            if (bgOpacity > 0.0f && !Service.configuration.BackgroundFullWindow && !string.IsNullOrEmpty(text))
+            if (bgOpacity > 0.0f && !Service.Configuration.BackgroundFullWindow && !string.IsNullOrEmpty(text))
             {
                 DrawTextBackground(xPos, baseY + verticalCenterOffset, scaledSizeX, scaledSizeY, bgOpacity);
             }
@@ -160,9 +148,24 @@ namespace Singingway.Windows
             drawList.AddRectFilled(bgStart, bgEnd, bgColorWithOpacity);
         }
 
+        private void InitializeWindow()
+        {
+            if (_isInitialized) return;
+
+            var pos = ImGui.GetWindowPos();
+            var size = ImGui.GetWindowSize();
+
+            _storedCenterX = pos.X + (size.X / 2f);
+            _currentY = pos.Y;
+            _lastWidth = size.X;
+            _lastHeight = size.Y;
+
+            _isInitialized = true;
+        }
+
         private void DrawFullWindowBackground(float opacity)
         {
-            if (opacity <= 0.0f || !Service.configuration.BackgroundFullWindow) return;
+            if (opacity <= 0.0f || !Service.Configuration.BackgroundFullWindow) return;
 
             ImDrawListPtr drawList = ImGui.GetWindowDrawList();
             Vector2 windowPos = ImGui.GetWindowPos();
@@ -174,7 +177,7 @@ namespace Singingway.Windows
 
         private uint GetBackgroundColorWithOpacity(float opacity)
         {
-            uint bgColor = Service.configuration.BackgroundColor;
+            uint bgColor = Service.Configuration.BackgroundColor;
             byte alpha = (byte)(((bgColor >> 24) & 0xFF) * opacity);
             return (bgColor & 0x00FFFFFF) | ((uint)alpha << 24);
         }
@@ -186,7 +189,7 @@ namespace Singingway.Windows
 
         private void DrawTotalTime(float windowWidth, double elapsed, double totalSongTime)
         {
-            if (!Service.configuration.ShowTotalTime) return;
+            if (!Service.Configuration.ShowTotalTime) return;
 
             string timeText = $"{FormatTime(elapsed)} / {FormatTime(totalSongTime)}";
             var timeTextSize = ImGui.CalcTextSize(timeText);
@@ -201,9 +204,9 @@ namespace Singingway.Windows
 
         private void DrawProgressBar(float windowWidth, float scaledMainTextWidth, float baseY, double elapsed, double? nextTime, double prevTime, double totalSongTime)
         {
-            if (!nextTime.HasValue || !Service.configuration.ShowProgressBar) return;
+            if (!nextTime.HasValue || !Service.Configuration.ShowProgressBar) return;
 
-            var timingOffset = Service.configuration.TimingOffsetSeconds;
+            var timingOffset = Service.Configuration.TimingOffsetSeconds;
             var adjustedElapsed = elapsed - timingOffset;
             var adjustedNextTime = nextTime.Value - timingOffset;
             var total = adjustedNextTime - prevTime;
@@ -229,6 +232,7 @@ namespace Singingway.Windows
 
                 var currentSize = ImGui.GetWindowSize();
                 _storedCenterX = currentWindowPos.X + (currentSize.X / 2f);
+                _currentY = currentWindowPos.Y;
             }
         }
     }

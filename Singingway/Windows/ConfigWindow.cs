@@ -46,102 +46,97 @@ internal class ConfigWindow : Window
 
     private void DrawDisplaySettings()
     {
-        int _MinWindowWidth = Service.configuration.MinWindowWidth;
+        int _MinWindowWidth = Service.Configuration.MinWindowWidth;
         if (ImGui.InputInt("Min window width", ref _MinWindowWidth))
         {
-            Service.configuration.MinWindowWidth = _MinWindowWidth;
-            Service.configuration.Save();
+            _MinWindowWidth = Math.Clamp(_MinWindowWidth, 0, 3840);
+            Service.Configuration.MinWindowWidth = _MinWindowWidth;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
-        int _MaxWindowWidth = Service.configuration.MaxWindowWidth;
+        int _MaxWindowWidth = Service.Configuration.MaxWindowWidth;
         if (ImGui.InputInt("Max window width", ref _MaxWindowWidth))
         {
-            Service.configuration.MaxWindowWidth = _MaxWindowWidth;
-            Service.configuration.Save();
+            _MaxWindowWidth = Math.Clamp(_MaxWindowWidth, 0, 3840);
+            Service.Configuration.MaxWindowWidth = _MaxWindowWidth;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
         ImGui.Separator();
 
-        Vector4 _BackgroundColorVec = ImGui.ColorConvertU32ToFloat4(Service.configuration.BackgroundColor);
+        Vector4 _BackgroundColorVec = ImGui.ColorConvertU32ToFloat4(Service.Configuration.BackgroundColor);
         if (ImGui.ColorEdit4("Background Color", ref _BackgroundColorVec))
         {
-            Service.configuration.BackgroundColor = ImGui.GetColorU32(_BackgroundColorVec);
-            Service.configuration.Save();
+            Service.Configuration.BackgroundColor = ImGui.GetColorU32(_BackgroundColorVec);
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
-        int _BackgroundOpacityPercentage = Service.configuration.BackgroundOpacityPercentage;
+        int _BackgroundOpacityPercentage = Service.Configuration.BackgroundOpacityPercentage;
         if (ImGui.SliderInt("Background Opacity %", ref _BackgroundOpacityPercentage, 0, 100))
         {
-            Service.configuration.BackgroundOpacityPercentage = _BackgroundOpacityPercentage;
-            Service.configuration.Save();
+            Service.Configuration.BackgroundOpacityPercentage = _BackgroundOpacityPercentage;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
-        bool _BackgroundFullWindow = Service.configuration.BackgroundFullWindow;
+        bool _BackgroundFullWindow = Service.Configuration.BackgroundFullWindow;
         if (ImGui.Checkbox("Background behind full window", ref _BackgroundFullWindow))
         {
-            Service.configuration.BackgroundFullWindow = _BackgroundFullWindow;
-            Service.configuration.Save();
+            Service.Configuration.BackgroundFullWindow = _BackgroundFullWindow;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
         ImGui.Separator();
 
-        bool _ShowTotalTime = Service.configuration.ShowTotalTime;
+        bool _ShowTotalTime = Service.Configuration.ShowTotalTime;
         if (ImGui.Checkbox("Show total time", ref _ShowTotalTime))
         {
-            Service.configuration.ShowTotalTime = _ShowTotalTime;
-            Service.configuration.Save();
+            Service.Configuration.ShowTotalTime = _ShowTotalTime;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
-        bool _ShowProgressBar = Service.configuration.ShowProgressBar;
+        bool _ShowProgressBar = Service.Configuration.ShowProgressBar;
         if (ImGui.Checkbox("Show progress bar", ref _ShowProgressBar))
         {
-            Service.configuration.ShowProgressBar = _ShowProgressBar;
-            Service.configuration.Save();
+            Service.Configuration.ShowProgressBar = _ShowProgressBar;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
         ImGui.Separator();
 
-        int _TextScalePercentage = Service.configuration.TextScalePercentage;
+        int _TextScalePercentage = Service.Configuration.TextScalePercentage;
         if (ImGui.SliderInt("Text Scale %", ref _TextScalePercentage, 50, 200))
         {
-            Service.configuration.TextScalePercentage = _TextScalePercentage;
-            Service.configuration.Save();
+            Service.Configuration.TextScalePercentage = _TextScalePercentage;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
         ImGui.Separator();
 
-        int _TimingOffsetMs = (int)(Service.configuration.TimingOffsetSeconds * 1000);
+        int _TimingOffsetMs = (int)(Service.Configuration.TimingOffsetSeconds * 1000);
         if (ImGui.InputInt("Timing Offset (ms)", ref _TimingOffsetMs))
         {
-            Service.configuration.TimingOffsetSeconds = _TimingOffsetMs / 1000.0;
-            Service.configuration.Save();
-            OnConfigChanged?.Invoke();
-        }
-
-        int _LoopTimingOffsetMs = (int)(Service.configuration.LoopTimingOffsetSeconds * 1000);
-        if (ImGui.InputInt("Loop Timing Offset (ms)", ref _LoopTimingOffsetMs))
-        {
-            Service.configuration.LoopTimingOffsetSeconds = _LoopTimingOffsetMs / 1000.0;
-            Service.configuration.Save();
+            _TimingOffsetMs = Math.Clamp(_TimingOffsetMs, -1000, 1000);
+            Service.Configuration.TimingOffsetSeconds = _TimingOffsetMs / 1000.0;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
     }
 
     private void DrawDevelopmentSettings()
     {
-        bool _UseLyricsDirectory = Service.configuration.UseLyricsDirectory;
+        bool _UseLyricsDirectory = Service.Configuration.UseLyricsDirectory;
         if (ImGui.Checkbox("Prioritize directory on disk", ref _UseLyricsDirectory))
         {
-            Service.configuration.UseLyricsDirectory = _UseLyricsDirectory;
-            Service.configuration.Save();
+            Service.Configuration.UseLyricsDirectory = _UseLyricsDirectory;
+            Service.Configuration.Save();
             OnConfigChanged?.Invoke();
         }
 
@@ -149,13 +144,13 @@ internal class ConfigWindow : Window
         {
             ImGui.Text("Lyrics directory:");
             ImGui.PushItemWidth(-1);
-            var current = Service.configuration?.LyricsDirectory ?? string.Empty;
+            var current = Service.Configuration?.LyricsDirectory ?? string.Empty;
             if (ImGui.InputText("##lyricsdir", ref current, 260))
             {
-                if (!string.Equals(current, Service.configuration?.LyricsDirectory, StringComparison.Ordinal))
+                if (!string.Equals(current, Service.Configuration?.LyricsDirectory, StringComparison.Ordinal))
                 {
-                    Service.configuration.LyricsDirectory = current;
-                    Service.configuration.Save();
+                    Service.Configuration?.LyricsDirectory = current;
+                    Service.Configuration?.Save();
                     InvokeConfigChanged();
                 }
             }
