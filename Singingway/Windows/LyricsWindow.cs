@@ -40,8 +40,7 @@ namespace Singingway.Windows
             var nextTextSize = Text.CalcSize(nextText);
             Fonts.SubTitleFont?.Pop();
 
-            float windowHeight = Math.Max(DefaultHeight, baseY + textSize.Y + 4f + nextTextSize.Y + 8f + 12f + 8f);
-            CalculateLayoutAndResize(textSize.X, nextTextSize.X, windowHeight, out float targetWidth, out float mainTextScale, out float nextTextScale);
+            CalculateLayoutAndResize(textSize, nextTextSize, baseY, out float targetWidth, out float windowHeight, out float mainTextScale, out float nextTextScale);
 
             if (!ImGui.Begin("##LyricsWindow", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoScrollbar))
             {
@@ -76,16 +75,33 @@ namespace Singingway.Windows
             ImGui.End();
         }
 
-        private void CalculateLayoutAndResize(float mainWidth, float nextWidth, float windowHeight, out float targetWidth, out float mainScale, out float nextScale)
+        private void CalculateLayoutAndResize(Vector2 mainSize, Vector2 nextSize, float baseY, out float targetWidth, out float windowHeight, out float mainScale, out float nextScale)
         {
             float padding = 40f;
             float maxConfigWidth = Service.Configuration.MaxWindowWidth;
+            float configScale = Service.Configuration.TextScalePercentage / 100f;
+            float scaledMainWidth = mainSize.X * configScale;
+            float scaledNextWidth = nextSize.X * configScale;
 
-            float contentWidth = Math.Max(mainWidth, nextWidth) + padding;
+            float contentWidth = Math.Max(scaledMainWidth, scaledNextWidth) + padding;
             targetWidth = Math.Max(Service.Configuration.MinWindowWidth, Math.Min(contentWidth, maxConfigWidth));
 
-            mainScale = CalculateTextScale(mainWidth, maxConfigWidth, padding);
-            nextScale = CalculateTextScale(nextWidth, maxConfigWidth, padding);
+            mainScale = configScale;
+            if (scaledMainWidth + padding > maxConfigWidth)
+            {
+                mainScale = configScale * (maxConfigWidth / (scaledMainWidth + padding));
+            }
+
+            nextScale = configScale;
+            if (scaledNextWidth + padding > maxConfigWidth)
+            {
+                nextScale = configScale * (maxConfigWidth / (scaledNextWidth + padding));
+            }
+
+            float finalMainHeight = mainSize.Y * mainScale;
+            float finalNextHeight = nextSize.Y * nextScale;
+
+            windowHeight = Math.Max(DefaultHeight, baseY + finalMainHeight + 4f + finalNextHeight + 8f + 12f + 8f);
 
             if (!_isInitialized)
             {
@@ -102,17 +118,6 @@ namespace Singingway.Windows
                 ImGui.SetNextWindowPos(new Vector2(newLeftX, _currentY), ImGuiCond.Always);
                 ImGui.SetNextWindowSize(new Vector2(targetWidth, windowHeight), ImGuiCond.Always);
             }
-        }
-
-        private float CalculateTextScale(float textWidth, float maxWidth, float padding)
-        {
-            float scale = 1.0f;
-            float contentWidth = textWidth + padding;
-            if (contentWidth > maxWidth)
-            {
-                scale = maxWidth / contentWidth;
-            }
-            return scale * (Service.Configuration.TextScalePercentage / 100f);
         }
 
         private void DrawTextLine(string text, Vector2 originalSize, float scale, float windowWidth, float baseY, uint color, float bgOpacity)

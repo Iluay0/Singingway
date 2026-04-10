@@ -96,10 +96,9 @@
     { "Time": "04:04.00", "Text": "Oh gods! Again! I really should have said (ah-ah!)" },
     { "Time": "04:07.00", "Text": "Heed me well, or you're as good as dead! (ah-ah!)" },
 	
-	{ "Time": "04:11.00", "Text": "B is for beauty both devious and sweet" },
+    { "Time": "04:11.00", "Text": "B is for beauty both devious and sweet" },
     { "Time": "04:14.00", "Text": "Beware the sting of your pitiful defeat" },
-    { "Time": "04:17.00", "Text": "Be mine forever and always play your part" },
 	
-    { "Time": "04:17.90", "Text": "", "LoopToTime": "00:10.00" }
+    { "Time": "04:16.90", "Text": "Be mine forever and always play your part", "LoopToTime": "00:09.00" }
   ]
 }
