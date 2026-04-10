@@ -23,9 +23,11 @@ By default, they are compiled into the plugin itself, but it is possible to set 
 
 ```json
 [
-  { "Time": "00:10.03", "Text": "First line of the song" },
-  { "Time": "00:22.10", "Text": "Chorus starts" },
-  { "Time": "02:56.90", "Text": "", "LoopToTime": "00:22.10" }
+  { "Time": "00:00.00", "Text": "First line of the song" },
+  { "Time": "00:10.00", "Text": "Chorus starts" },
+  ...
+  { "Time": "01:58.00", "Text": "Last line of the song" },
+  { "Time": "02:00.00", "Text": "", "LoopToTime": "00:10.00" }
 ]
 ```
 
@@ -37,3 +39,4 @@ By default, they are compiled into the plugin itself, but it is possible to set 
 To avoid frame-perfect desyncs, do not guess the loop times.  
 Extract the `LoopStartSample` and `LoopEndSample` from the track's `.scd` file to get the exact floating-point timestamps.  
 This can be done by using the [VFXEditor](https://github.com/0ceal0t/Dalamud-VFXEditor) plugin.
+Important: As long as the loop duration is correct, it is entirely possible to move it around in order to match a lyric timestamp. This is heavily recommended so the lyrics can display correctly when looping.

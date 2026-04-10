@@ -7,17 +7,17 @@ namespace Singingway.Utils;
 
 internal class Service
 {
-    internal static Plugin plugin { get; set; } = null!;
+    internal static Plugin Plugin { get; set; } = null!;
 
-    internal static ConfigWindow configWindow { get; set; } = null!;
-    internal static Configuration configuration { get; set; } = null!;
+    internal static ConfigWindow ConfigWindow { get; set; } = null!;
+    internal static Configuration Configuration { get; set; } = null!;
 
-    internal static Windows.LyricsWindow lyricsWindow { get; set; } = null!;
+    internal static LyricsWindow LyricsWindow { get; set; } = null!;
 
-    [PluginService] public static IDalamudPluginInterface pluginInterface { get; set; } = null!;
-    [PluginService] public static IChatGui chatGui { get; private set; } = null!;
+    [PluginService] public static IDalamudPluginInterface PluginInterface { get; set; } = null!;
+    [PluginService] public static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] public static IGameGui GameGui { get; private set; } = null!;
-    [PluginService] public static ICommandManager commandManager { get; private set; } = null!;
+    [PluginService] public static ICommandManager CommandManager { get; private set; } = null!;
 
     [PluginService] public static IFramework Framework { get; private set; } = null!;
     [PluginService] public static IDataManager DataManager { get; private set; } = null!;

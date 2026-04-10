@@ -9,18 +9,18 @@ namespace Singingway
     {
         public int Version { get; set; } = 0;
 
-        private int minWindowWidth = 200;
+        private int _minWindowWidth = 200;
         public int MinWindowWidth
         {
-            get => minWindowWidth;
-            set => minWindowWidth = Math.Min(value, MaxWindowWidth);
+            get => _minWindowWidth;
+            set => _minWindowWidth = Math.Min(value, MaxWindowWidth);
         }
 
-        private int maxWindowWidth = 800;
+        private int _maxWindowWidth = 800;
         public int MaxWindowWidth
         {
-            get => maxWindowWidth;
-            set => maxWindowWidth = Math.Max(value, MinWindowWidth);
+            get => _maxWindowWidth;
+            set => _maxWindowWidth = Math.Max(value, MinWindowWidth);
         }
 
         public uint BackgroundColor { get; set; } = 0xFF000000;
@@ -38,19 +38,18 @@ namespace Singingway
         public string LyricsDirectory { get; set; } = "";
 
         public double TimingOffsetSeconds { get; set; } = 0.0;
-        public double LoopTimingOffsetSeconds { get; set; } = -0.12;
 
         [NonSerialized]
-        private IDalamudPluginInterface? pluginInterface;
+        private IDalamudPluginInterface? _pluginInterface;
 
         public void Initialize(IDalamudPluginInterface pluginInterface)
         {
-            this.pluginInterface = pluginInterface;
+            this._pluginInterface = pluginInterface;
         }
 
         public void Save()
         {
-            pluginInterface!.SavePluginConfig(this);
+            _pluginInterface!.SavePluginConfig(this);
         }
     }
 }

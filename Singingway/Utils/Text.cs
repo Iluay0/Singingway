@@ -197,9 +197,11 @@ namespace Singingway.Utils
             for (int i = 0; i < fragments.Count; i++)
             {
                 var frag = fragments[i];
-                bool shouldApplyColor = frag.Color.HasValue && !HasForcedColor;
 
-                if (shouldApplyColor) ImGui.PushStyleColor(ImGuiCol.Text, frag.Color.Value);
+                if (frag.Color.HasValue && !HasForcedColor)
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, frag.Color.Value);
+                }
 
                 Vector2 cursorPos = ImGui.GetCursorScreenPos();
                 uint currentTextColor = ImGui.GetColorU32(ImGuiCol.Text);
@@ -222,7 +224,10 @@ namespace Singingway.Utils
                     drawList.AddLine(lineStart, lineEnd, currentTextColor, 1.0f);
                 }
 
-                if (shouldApplyColor) ImGui.PopStyleColor();
+                if (frag.Color.HasValue && !HasForcedColor)
+                {
+                    ImGui.PopStyleColor();
+                }
 
                 if (i < fragments.Count - 1)
                 {

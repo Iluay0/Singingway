@@ -19,36 +19,36 @@ namespace Singingway
         public static string Name => "Singingway";
         private const string LyricsCommand = "/singingway";
 
-        public static List<string> DebugMessages { get; } = new();
+        public static List<string> DebugMessages { get; } = [];
         private const int MaxDebugMessages = 1000;
 
         public WindowSystem WindowSystem { get; } = new("Singingway");
 
         private const int SongFadeDurationMs = 1500;
+        private CancellationTokenSource? _songDelayTokenSource;
 
         private bool _wasLoading = false;
         private ushort _currentBgmId = 0;
-        private BgmHelper _bgmHelper = new BgmHelper();
 
         public Plugin(IDalamudPluginInterface pluginInterface)
         {
-            Service.pluginInterface = pluginInterface;
+            Service.PluginInterface = pluginInterface;
 
-            Service.configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            Service.configuration.Initialize(pluginInterface);
+            Service.Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            Service.Configuration.Initialize(pluginInterface);
 
             _ = pluginInterface.Create<Service>();
-            Service.plugin = this;
+            Service.Plugin = this;
 
-            Service.configWindow = new ConfigWindow(this);
-            WindowSystem.AddWindow(Service.configWindow);
+            Service.ConfigWindow = new ConfigWindow(this);
+            WindowSystem.AddWindow(Service.ConfigWindow);
 
-            Service.lyricsWindow = new Windows.LyricsWindow();
-            WindowSystem.AddWindow(Service.lyricsWindow);
+            Service.LyricsWindow = new Windows.LyricsWindow();
+            WindowSystem.AddWindow(Service.LyricsWindow);
 
             Utils.LyricsManager.Instance.PlayingChanged += playing =>
             {
-                Service.lyricsWindow.IsOpen = playing;
+                Service.LyricsWindow.IsOpen = playing;
                 if (!playing)
                 {
                     PlayCurrentBgm();
@@ -58,7 +58,7 @@ namespace Singingway
             pluginInterface.UiBuilder.Draw += DrawUI;
             pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            Service.commandManager.AddHandler(LyricsCommand, new CommandInfo(OnLyricsCommand)
+            Service.CommandManager.AddHandler(LyricsCommand, new CommandInfo(OnLyricsCommand)
             {
                 HelpMessage = "Singingway: /singingway start <bgmfile> | /singingway stop | /singingway config"
             });
@@ -70,7 +70,6 @@ namespace Singingway
             DebugOut("Plugin Loaded!");
         }
 
-        private CancellationTokenSource _songDelayTokenSource;
         private void OnFrameworkUpdate(IFramework framework)
         {
             LyricsManager.Instance.Update();
@@ -82,7 +81,7 @@ namespace Singingway
                 return;
             }
 
-            var playingBgmId = _bgmHelper.GetActiveBgmId();
+            var playingBgmId = BgmHelper.GetActiveBgmId();
             if (playingBgmId != _currentBgmId)
             {
                 var previousBgmId = _currentBgmId;
@@ -92,7 +91,7 @@ namespace Singingway
                 _songDelayTokenSource = new CancellationTokenSource();
 
                 int delayMs = GetTransitionDelay(previousBgmId, _currentBgmId, _wasLoading);
-                Plugin.DebugOut(new SeStringBuilder().Append($"BGM changed from {previousBgmId} to {_currentBgmId}, applying delay of {delayMs}ms").BuiltString);
+                DebugOut(new SeStringBuilder().Append($"BGM changed from {previousBgmId} to {_currentBgmId}, applying delay of {delayMs}ms").BuiltString);
                 _ = PlayCurrentBgmDelayed(_currentBgmId, delayMs, _songDelayTokenSource.Token);
             }
 
@@ -108,11 +107,7 @@ namespace Singingway
 
         private int GetTransitionDelay(ushort previousBgmId, ushort currentBgmId, bool wasLoading)
         {
-            if (wasLoading)
-            {
-                return 0;
-            }
-
+            if (wasLoading) return 0;
             return SongFadeDurationMs;
         }
 
@@ -163,7 +158,7 @@ namespace Singingway
         public static void ChatOut(SeString message)
         {
             var sb = new SeStringBuilder().AddUiForeground("[Singingway] ", 58).Append(message);
-            Service.chatGui.Print(new XivChatEntry { Message = sb.BuiltString });
+            Service.ChatGui.Print(new XivChatEntry { Message = sb.BuiltString });
         }
 
         public static void DebugOut(SeString message)
@@ -184,7 +179,7 @@ namespace Singingway
         public void Dispose()
         {
             WindowSystem.RemoveAllWindows();
-            Service.commandManager?.RemoveHandler(LyricsCommand);
+            Service.CommandManager?.RemoveHandler(LyricsCommand);
             Utils.LyricsManager.Instance.Dispose();
 
             Service.Framework.Update -= OnFrameworkUpdate;
@@ -192,7 +187,7 @@ namespace Singingway
 
         private void DrawUI() => WindowSystem.Draw();
 
-        public static void DrawConfigUI() => Service.configWindow.IsOpen = true;
+        public static void DrawConfigUI() => Service.ConfigWindow.IsOpen = true;
 
         private void OnLyricsCommand(string command, string args)
         {
@@ -217,7 +212,7 @@ namespace Singingway
             }
             if (sub == "config")
             {
-                Service.configWindow.IsOpen = !Service.configWindow.IsOpen;
+                Service.ConfigWindow.IsOpen = !Service.ConfigWindow.IsOpen;
                 return;
             }
 

@@ -2,9 +2,9 @@
 
 namespace Singingway.Utils
 {
-    public unsafe class BgmHelper
+    public unsafe static class BgmHelper
     {
-        public ushort GetActiveBgmId()
+        public static ushort GetActiveBgmId()
         {
             BGMSystem* bgmSystem = BGMSystem.Instance();
 

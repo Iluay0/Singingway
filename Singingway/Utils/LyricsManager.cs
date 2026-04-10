@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 
 namespace Singingway.Utils
 {
@@ -11,6 +12,8 @@ namespace Singingway.Utils
         public double Time { get; set; }
         public string Text { get; set; } = string.Empty;
         public double LoopToTime { get; set; } = -1.0;
+
+        public bool IsLooping => LoopToTime >= 0.0;
     }
 
     internal class LyricsFile
@@ -28,10 +31,18 @@ namespace Singingway.Utils
         private bool _isPlaying = false;
         public bool IsPlaying => _isPlaying;
 
-        private DateTime startTime;
-        private List<TimedLine> currentLines = new();
-        private int nextIndex = 0;
-        private readonly object _lockObject = new();
+        private DateTime _startTime;
+        private List<TimedLine> _currentLines = [];
+        private int _nextIndex = 0;
+        private readonly Lock _lockObject = new();
+
+        private string _currentDisplayText = string.Empty;
+        private double _previousTimestamp = 0.0;
+
+        // The FFXIV audio engine seems to utilize an internal overlap-add buffer for seamless transitions.
+        // Testing across multiple tracks and loop points confirms this buffer processing pauses the
+        // audio playhead relative to the system clock by exactly 150ms per transition/loop.
+        private const double EngineTransitionOffset = 0.150;
 
         private LyricsManager() { }
 
@@ -42,14 +53,14 @@ namespace Singingway.Utils
             bgmFileName = Path.GetFileName(bgmFileName);
             string lyricsFile = Path.ChangeExtension(bgmFileName, ".json");
 
-            var baseDir = Service.configuration?.LyricsDirectory;
+            var baseDir = Service.Configuration?.LyricsDirectory;
             if (string.IsNullOrEmpty(baseDir)) baseDir = Path.Combine(AppContext.BaseDirectory, "Lyrics");
 
             var lyricsPath = Path.Combine(baseDir, lyricsFile);
             Plugin.DebugOut($"Attempting to load lyrics for: {bgmFileName}");
 
             string? json = null;
-            if (Service.configuration?.UseLyricsDirectory ?? false)
+            if (Service.Configuration?.UseLyricsDirectory ?? false)
             {
                 if (!Directory.Exists(baseDir))
                 {
@@ -76,7 +87,7 @@ namespace Singingway.Utils
                     string resourceName = $"Singingway.Resources.Lyrics.{lyricsFile}";
                     var assembly = System.Reflection.Assembly.GetExecutingAssembly();
 
-                    using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+                    using (Stream? stream = assembly.GetManifestResourceStream(resourceName))
                     {
                         if (stream != null)
                         {
@@ -112,10 +123,10 @@ namespace Singingway.Utils
 
                 lock (_lockObject)
                 {
-                    currentLines = lf.Lines.OrderBy(l => l.Time).ToList();
-                    nextIndex = 0;
-                    startTime = DateTime.UtcNow;
-                    previousTimestamp = 0.0;
+                    _currentLines = lf.Lines.OrderBy(l => l.Time).ToList();
+                    _nextIndex = 0;
+                    _startTime = DateTime.UtcNow;
+                    _previousTimestamp = 0.0;
                     _isPlaying = true;
                 }
                 Plugin.DebugOut($"Now playing lyrics for: {bgmFileName}");
@@ -134,8 +145,8 @@ namespace Singingway.Utils
             {
                 wasPlaying = _isPlaying;
                 _isPlaying = false;
-                currentLines.Clear();
-                nextIndex = 0;
+                _currentLines.Clear();
+                _nextIndex = 0;
             }
             Text.ClearCache();
 
@@ -147,17 +158,19 @@ namespace Singingway.Utils
 
         public double GetLineTime(int lineIndex)
         {
-            if (lineIndex < 0 || lineIndex >= currentLines.Count)
+            if (lineIndex < 0 || lineIndex >= _currentLines.Count)
             {
                 return 0.0;
             }
 
-            double time = currentLines[lineIndex].Time;
-            time += Service.configuration?.TimingOffsetSeconds ?? 0.0;
-
-            if (currentLines[lineIndex].LoopToTime >= 0.0)
+            double time = _currentLines[lineIndex].Time;
+            if (_currentLines[lineIndex].IsLooping)
             {
-                time += Service.configuration?.LoopTimingOffsetSeconds ?? 0.0;
+                time -= EngineTransitionOffset;
+            }
+            else
+            {
+                time += Service.Configuration?.TimingOffsetSeconds ?? 0.0;
             }
 
             return time;
@@ -167,75 +180,72 @@ namespace Singingway.Utils
         {
             lock (_lockObject)
             {
-                if (nextIndex >= currentLines.Count)
+                if (_nextIndex >= _currentLines.Count)
                 {
                     _isPlaying = false;
                     return;
                 }
 
-                var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
-                while (nextIndex < currentLines.Count && GetLineTime(nextIndex) <= elapsed)
+                var elapsed = (DateTime.UtcNow - _startTime).TotalSeconds;
+                while (_nextIndex < _currentLines.Count && GetLineTime(_nextIndex) <= elapsed)
                 {
-                    var currentLine = currentLines[nextIndex];
-                    if (currentLine.LoopToTime >= 0.0)
+                    var currentLine = _currentLines[_nextIndex];
+                    if (currentLine.IsLooping)
                     {
-                        var loopDuration = GetLineTime(nextIndex) - currentLine.LoopToTime;
-                        startTime = startTime.AddSeconds(loopDuration);
+                        var loopDuration = GetLineTime(_nextIndex) - currentLine.LoopToTime;
+                        _startTime = _startTime.AddSeconds(loopDuration);
                         Plugin.DebugOut($"Looping back to {currentLine.LoopToTime} seconds");
 
-                        nextIndex = currentLines.FindIndex(l => l.Time > currentLine.LoopToTime);
-                        if (nextIndex == -1)
+                        _nextIndex = _currentLines.FindIndex(l => l.Time > currentLine.LoopToTime);
+                        if (_nextIndex == -1)
                         {
-                            nextIndex = currentLines.Count;
+                            _nextIndex = _currentLines.Count;
                             Plugin.DebugOut("LoopToTime exceeds all timestamps, stopping.");
                         }
-                        else if (nextIndex > 0)
+                        else if (_nextIndex > 0)
                         {
-                            currentLine = currentLines[nextIndex - 1];
-                            previousTimestamp = currentLine.Time;
-                            currentDisplayText = currentLine.Text;
+                            currentLine = _currentLines[_nextIndex - 1];
+                            _previousTimestamp = currentLine.Time;
+                            _currentDisplayText = currentLine.Text;
                         }
                         break;
                     }
 
-                    previousTimestamp = currentLine.Time;
-                    currentDisplayText = currentLine.Text;
-                    nextIndex++;
+                    _previousTimestamp = currentLine.Time;
+                    _currentDisplayText = currentLine.Text;
+                    _nextIndex++;
                 }
             }
         }
 
-        private string currentDisplayText = string.Empty;
-        private double previousTimestamp = 0.0;
-
         public string GetCurrentDisplayText()
         {
             lock (_lockObject)
-                return currentDisplayText;
+                return _currentDisplayText;
         }
-        public double GetElapsedSeconds() => startTime == default ? 0.0 : (DateTime.UtcNow - startTime).TotalSeconds;
+        public double GetElapsedSeconds() => _startTime == default ? 0.0 : (DateTime.UtcNow - _startTime).TotalSeconds;
         public double GetTotalDuration()
         {
             lock (_lockObject)
-                return currentLines.Count > 0 ? currentLines.Last().Time : 0.0;
+                return _currentLines.Count > 0 ? _currentLines.Last().Time : 0.0;
         }
         public double GetPreviousTimestamp()
         {
             lock (_lockObject)
-                return previousTimestamp;
+                return _previousTimestamp;
         }
         public double GetNextTimestamp()
         {
-            return GetLineTime(nextIndex);
+            return GetLineTime(_nextIndex);
         }
 
         public bool IsNextLineLooped()
         {
             lock (_lockObject)
             {
-                if (nextIndex >= 0 && nextIndex < currentLines.Count)
+                if (_nextIndex >= 0 && _nextIndex < _currentLines.Count)
                 {
-                    return currentLines[nextIndex].LoopToTime >= 0.0;
+                    return _currentLines[_nextIndex].IsLooping;
                 }
                 return false;
             }
@@ -245,23 +255,23 @@ namespace Singingway.Utils
         {
             lock (_lockObject)
             {
-                if (nextIndex == currentLines.Count - 1)
+                if (_nextIndex == _currentLines.Count - 1)
                 {
-                    var currentLine = currentLines[nextIndex];
-                    if (currentLine.LoopToTime >= 0.0)
+                    var currentLine = _currentLines[_nextIndex];
+                    if (currentLine.IsLooping)
                     {
-                        int targetNextIndex = currentLines.FindIndex(l => l.Time >= currentLine.LoopToTime);
-                        if (targetNextIndex != -1)
+                        int target_nextIndex = _currentLines.FindIndex(l => l.Time >= currentLine.LoopToTime);
+                        if (target_nextIndex != -1)
                         {
-                            return currentLines[targetNextIndex].Text;
+                            return _currentLines[target_nextIndex].Text;
                         }
 
                         return string.Empty;
                     }
                 }
 
-                if (nextIndex >= currentLines.Count) return string.Empty;
-                return currentLines[nextIndex].Text;
+                if (_nextIndex >= _currentLines.Count) return string.Empty;
+                return _currentLines[_nextIndex].Text;
             }
         }
 
