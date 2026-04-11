@@ -50,6 +50,13 @@ namespace Singingway.Utils
         {
             Stop();
 
+            lock (_lockObject)
+            {
+                _nextIndex = 0;
+                _startTime = DateTime.UtcNow;
+                _previousTimestamp = 0.0;
+            }
+
             bgmFileName = Path.GetFileName(bgmFileName);
             string lyricsFile = Path.ChangeExtension(bgmFileName, ".json");
 
@@ -124,11 +131,9 @@ namespace Singingway.Utils
                 lock (_lockObject)
                 {
                     _currentLines = lf.Lines.OrderBy(l => l.Time).ToList();
-                    _nextIndex = 0;
-                    _startTime = DateTime.UtcNow;
-                    _previousTimestamp = 0.0;
                     _isPlaying = true;
                 }
+
                 Plugin.DebugOut($"Now playing lyrics for: {bgmFileName}");
                 PlayingChanged?.Invoke(true);
             }
