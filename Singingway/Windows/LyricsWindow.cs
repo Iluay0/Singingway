@@ -117,6 +117,9 @@ namespace Singingway.Windows
                 float newLeftX = (float)Math.Round(_storedCenterX - (targetWidth / 2f));
                 ImGui.SetNextWindowPos(new Vector2(newLeftX, _currentY), ImGuiCond.Always);
                 ImGui.SetNextWindowSize(new Vector2(targetWidth, windowHeight), ImGuiCond.Always);
+
+                _lastWidth = targetWidth;
+                _lastHeight = windowHeight;
             }
         }
 
