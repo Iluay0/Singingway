@@ -38,6 +38,9 @@ internal class LyricsManager : IDisposable
     private string _currentDisplayText = string.Empty;
     private double _previousTimestamp = 0.0;
 
+    private bool _isPreviewMode = false;
+    private List<TimedLine>? _previewLinesCache = null;
+
     // The FFXIV audio engine seems to utilize an internal overlap-add buffer for seamless transitions.
     // Testing across multiple tracks and loop points confirms this buffer processing pauses the
     // audio playhead relative to the system clock by exactly 150ms per transition/loop.
@@ -47,98 +50,105 @@ internal class LyricsManager : IDisposable
 
     public void Start(string bgmFileName)
     {
-        Stop();
-
-        lock (_lockObject)
-        {
-            _nextIndex = 0;
-            _startTime = DateTime.UtcNow;
-            _previousTimestamp = 0.0;
-        }
-
-        bgmFileName = Path.GetFileName(bgmFileName);
-        string lyricsFile = Path.ChangeExtension(bgmFileName, ".json");
-
-        var baseDir = Service.Configuration?.LyricsDirectory;
-        if (string.IsNullOrEmpty(baseDir)) baseDir = Path.Combine(AppContext.BaseDirectory, "Lyrics");
-
-        var lyricsPath = Path.Combine(baseDir, lyricsFile);
-        Plugin.DebugOut($"Attempting to load lyrics for: {bgmFileName}");
-
-        string? json = null;
-        if (Service.Configuration?.UseLyricsDirectory ?? false)
-        {
-            if (!Directory.Exists(baseDir))
-            {
-                Plugin.DebugOut($"Lyrics directory does not exist: {baseDir}");
-            }
-            else if (File.Exists(lyricsPath))
-            {
-                try
-                {
-                    json = File.ReadAllText(lyricsPath);
-                    Plugin.DebugOut($"Loaded lyrics from disk: {lyricsPath}");
-                }
-                catch (Exception ex)
-                {
-                    Plugin.DebugOut($"Error reading from disk: {ex.Message}");
-                }
-            }
-        }
-
-        if (string.IsNullOrEmpty(json))
-        {
-            try
-            {
-                string resourceName = $"Singingway.Resources.Lyrics.{lyricsFile}";
-                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-
-                using (Stream? stream = assembly.GetManifestResourceStream(resourceName))
-                {
-                    if (stream != null)
-                    {
-                        using (StreamReader reader = new StreamReader(stream))
-                        {
-                            json = reader.ReadToEnd();
-                        }
-                        Plugin.DebugOut($"Loaded lyrics from embedded resource: {resourceName}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.DebugOut($"Error reading from resources: {ex.Message}");
-            }
-        }
-
-        if (string.IsNullOrEmpty(json))
-        {
-            Plugin.DebugOut($"No lyrics found on disk or in resources for: {bgmFileName}");
-            return;
-        }
-
         try
         {
-            json = PreprocessTimes(json);
-            var lf = JsonSerializer.Deserialize<LyricsFile>(json);
-            if (lf == null || lf.Lines.Count == 0)
-            {
-                Plugin.DebugOut("Lyrics file empty.");
-                return;
-            }
+            Stop();
 
             lock (_lockObject)
             {
-                _currentLines = lf.Lines.OrderBy(l => l.Time).ToList();
-                _isPlaying = true;
+                _nextIndex = 0;
+                _startTime = DateTime.UtcNow;
+                _previousTimestamp = 0.0;
             }
 
-            Plugin.DebugOut($"Now playing lyrics for: {bgmFileName}");
-            PlayingChanged?.Invoke(true);
+            bgmFileName = Path.GetFileName(bgmFileName);
+            string lyricsFile = Path.ChangeExtension(bgmFileName, ".json");
+
+            var baseDir = Service.Configuration?.LyricsDirectory;
+            if (string.IsNullOrEmpty(baseDir)) baseDir = Path.Combine(AppContext.BaseDirectory, "Lyrics");
+
+            var lyricsPath = Path.Combine(baseDir, lyricsFile);
+            Plugin.DebugOut($"Attempting to load lyrics for: {bgmFileName}");
+
+            string? json = null;
+            if (Service.Configuration?.UseLyricsDirectory ?? false)
+            {
+                if (!Directory.Exists(baseDir))
+                {
+                    Plugin.DebugOut($"Lyrics directory does not exist: {baseDir}");
+                }
+                else if (File.Exists(lyricsPath))
+                {
+                    try
+                    {
+                        json = File.ReadAllText(lyricsPath);
+                        Plugin.DebugOut($"Loaded lyrics from disk: {lyricsPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.DebugOut($"Error reading from disk: {ex.Message}");
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(json))
+            {
+                try
+                {
+                    string resourceName = $"Singingway.Resources.Lyrics.{lyricsFile}";
+                    var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+
+                    using (Stream? stream = assembly.GetManifestResourceStream(resourceName))
+                    {
+                        if (stream != null)
+                        {
+                            using (StreamReader reader = new StreamReader(stream))
+                            {
+                                json = reader.ReadToEnd();
+                            }
+                            Plugin.DebugOut($"Loaded lyrics from embedded resource: {resourceName}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.DebugOut($"Error reading from resources: {ex.Message}");
+                }
+            }
+
+            if (string.IsNullOrEmpty(json))
+            {
+                Plugin.DebugOut($"No lyrics found on disk or in resources for: {bgmFileName}");
+                return;
+            }
+
+            try
+            {
+                json = PreprocessTimes(json);
+                var lf = JsonSerializer.Deserialize<LyricsFile>(json);
+                if (lf == null || lf.Lines.Count == 0)
+                {
+                    Plugin.DebugOut("Lyrics file empty.");
+                    return;
+                }
+
+                lock (_lockObject)
+                {
+                    _currentLines = lf.Lines.OrderBy(l => l.Time).ToList();
+                    _isPlaying = true;
+                }
+
+                Plugin.DebugOut($"Now playing lyrics for: {bgmFileName}");
+                PlayingChanged?.Invoke(true);
+            }
+            catch (Exception ex)
+            {
+                Plugin.DebugOut($"Failed to parse lyrics JSON: {ex.Message}");
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            Plugin.DebugOut($"Failed to parse lyrics JSON: {ex.Message}");
+            RestorePreviewIfNeeded();
         }
     }
 
@@ -149,14 +159,106 @@ internal class LyricsManager : IDisposable
         {
             wasPlaying = _isPlaying;
             _isPlaying = false;
-            _currentLines.Clear();
+
+            _currentLines = new List<TimedLine>();
+
             _nextIndex = 0;
+            _previousTimestamp = 0.0;
+            _currentDisplayText = string.Empty;
         }
         Text.ClearCache();
 
         if (wasPlaying)
         {
             PlayingChanged?.Invoke(false);
+        }
+    }
+
+    public void LoadPreviewLines(List<TimedLine> previewLines)
+    {
+        bool wasPlaying;
+        lock (_lockObject)
+        {
+            var sortedLines = previewLines.OrderBy(l => l.Time).ToList();
+            _currentLines = sortedLines;
+
+            _previewLinesCache = new List<TimedLine>(sortedLines);
+            _isPreviewMode = true;
+
+            if (_startTime == default)
+            {
+                _startTime = DateTime.UtcNow;
+            }
+
+            wasPlaying = _isPlaying;
+            _isPlaying = true;
+
+            SyncToCurrentTime();
+        }
+
+        if (!wasPlaying)
+        {
+            PlayingChanged?.Invoke(true);
+        }
+    }
+
+    public void ClearPreview()
+    {
+        lock (_lockObject)
+        {
+            _previewLinesCache = null;
+            _isPreviewMode = false;
+
+            _currentLines = new List<TimedLine>();
+
+            _currentDisplayText = string.Empty;
+            _nextIndex = 0;
+            _previousTimestamp = 0.0;
+            _isPlaying = false;
+        }
+
+        PlayingChanged?.Invoke(false);
+    }
+
+    private void SyncToCurrentTime()
+    {
+        double elapsed = GetElapsedSeconds();
+        _nextIndex = 0;
+        _previousTimestamp = 0.0;
+
+        _currentDisplayText = string.Empty;
+
+        while (_nextIndex < _currentLines.Count && GetLineTime(_nextIndex) <= elapsed)
+        {
+            var currentLine = _currentLines[_nextIndex];
+            _previousTimestamp = currentLine.Time;
+            _currentDisplayText = currentLine.Text;
+            _nextIndex++;
+        }
+    }
+
+    private void RestorePreviewIfNeeded()
+    {
+        bool invokeEvent = false;
+        lock (_lockObject)
+        {
+            if (_isPreviewMode && _previewLinesCache != null)
+            {
+                _currentLines = new List<TimedLine>(_previewLinesCache);
+
+                if (!_isPlaying)
+                {
+                    _isPlaying = true;
+                    invokeEvent = true;
+                }
+
+                SyncToCurrentTime();
+            }
+        }
+
+        if (invokeEvent)
+        {
+            PlayingChanged?.Invoke(true);
         }
     }
 
@@ -321,7 +423,7 @@ internal class LyricsManager : IDisposable
         return outJson;
     }
 
-    private static bool TryParseMmSsMs(string s, out double seconds)
+    public static bool TryParseMmSsMs(string s, out double seconds)
     {
         seconds = 0;
         // formats: mm:ss, m:ss.ms, ss.ms, mm:ss.ms
