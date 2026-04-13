@@ -1,10 +1,10 @@
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using Singingway.Windows;
+using Singingway.Windows.Config;
+using Singingway.Windows.Lyrics;
 
 namespace Singingway.Utils;
-
 internal class Service
 {
     internal static Plugin Plugin { get; set; } = null!;
