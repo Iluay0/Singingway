@@ -12,6 +12,9 @@
         <TargetFramework>net10.0-windows7.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
+      <EmbeddedResource Include="Resources\Lyrics\BGM_EX4_MoE_04.json" />
+    </ItemGroup>
+    <ItemGroup>
       <EmbeddedResource Include="Resources\Lyrics\BGM_EX4_MoE_08.json" />
       <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_20.json" />
     </ItemGroup>
