@@ -11,12 +11,12 @@ public static class Fonts
     {
         TitleFont = Service.PluginInterface.UiBuilder.FontAtlas.NewDelegateFontHandle(tk =>
         {
-            tk.OnPreBuild(tk => tk.AddDalamudAssetFont(Dalamud.DalamudAsset.NotoSansJpMedium, new() { SizePx = 32 }));
+            tk.OnPreBuild(tk => tk.AddDalamudAssetFont(Dalamud.DalamudAsset.NotoSansCjkMedium, new() { SizePx = 32 }));
         });
 
         SubTitleFont = Service.PluginInterface.UiBuilder.FontAtlas.NewDelegateFontHandle(tk =>
         {
-            tk.OnPreBuild(tk => tk.AddDalamudAssetFont(Dalamud.DalamudAsset.NotoSansJpMedium, new() { SizePx = 24 }));
+            tk.OnPreBuild(tk => tk.AddDalamudAssetFont(Dalamud.DalamudAsset.NotoSansCjkMedium, new() { SizePx = 24 }));
         });
     }
 }
