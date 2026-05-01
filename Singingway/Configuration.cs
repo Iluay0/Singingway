@@ -29,6 +29,14 @@ internal class Configuration : IPluginConfiguration
 
     public int TextScalePercentage { get; set; } = 100;
 
+    public bool EnableVolumeOverrides { get; set; } = false;
+    public uint VolumeSoundMaster { get; set; } = 100;
+    public uint VolumeSoundBgm { get; set; } = 100;
+    public uint VolumeSoundSe { get; set; } = 100;
+    public uint VolumeSoundVoice { get; set; } = 100;
+    public uint VolumeSoundEnv { get; set; } = 100;
+    public uint VolumeSoundSystem { get; set; } = 100;
+    public uint VolumeSoundPerform { get; set; } = 100;
 
     public bool ShowTotalTime { get; set; } = false;
     public bool ShowProgressBar { get; set; } = true;
