@@ -21,6 +21,7 @@ internal class ConfigWindow : Window
 
         _tabs = [
                 new DisplaySettingsTab(),
+                new VolumeSettingsTab(),
                 new DevelopmentSettingsTab(),
                 new DebugTab(),
                 new LyricBuildingTab()

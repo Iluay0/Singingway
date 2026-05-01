@@ -9,19 +9,19 @@
 			"lyrics"
 	    ],
 	    "InternalName": "Singingway",
-	    "AssemblyVersion": "0.4.0",
-	    "TestingAssemblyVersion": "0.4.0",
+	    "AssemblyVersion": "0.5.0",
+	    "TestingAssemblyVersion": "0.5.0",
 		"RepoUrl": "https://github.com/Iluay0/Singingway",
 	    "ApplicableVersion": "any",
-	    "DalamudApiLevel": 14,
-	    "TestingDalamudApiLevel": 14,
+	    "DalamudApiLevel": 15,
+	    "TestingDalamudApiLevel": 15,
 	    "IsHide": false,
 	    "IsTestingExclusive": false,
 	    "DownloadCount": 67,
 	    "LastUpdate": 1775739754,
-	    "DownloadLinkInstall": "https://github.com/Iluay0/Singingway/releases/download/0.4.0/Singingway.zip",
-	    "DownloadLinkUpdate": "https://github.com/Iluay0/Singingway/releases/download/0.4.0/Singingway.zip",
-	    "DownloadLinkTesting": "https://github.com/Iluay0/Singingway/releases/download/0.4.0/Singingway.zip",
-	    "IconUrl": "https://raw.githubusercontent.com/Iluay0/Singingway/main/images/icon.png",
+	    "DownloadLinkInstall": "https://github.com/Iluay0/Singingway/releases/download/0.5.0/Singingway.zip",
+	    "DownloadLinkUpdate": "https://github.com/Iluay0/Singingway/releases/download/0.5.0/Singingway.zip",
+	    "DownloadLinkTesting": "https://github.com/Iluay0/Singingway/releases/download/0.5.0/Singingway.zip",
+	    "IconUrl": "https://raw.githubusercontent.com/Iluay0/Singingway/main/images/icon.png"
 	}
 ]

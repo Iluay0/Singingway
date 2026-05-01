@@ -29,6 +29,8 @@ internal sealed class Plugin : IDalamudPlugin
 
     private bool _wasLoading = false;
     private ushort _currentBgmId = 0;
+    private readonly Dictionary<string, uint> _savedVolumeDefaults = new();
+    private bool _volumeOverridesApplied = false;
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -42,6 +44,20 @@ internal sealed class Plugin : IDalamudPlugin
 
         Service.ConfigWindow = new ConfigWindow(this);
         WindowSystem.AddWindow(Service.ConfigWindow);
+        Service.ConfigWindow.OnConfigChanged += () =>
+        {
+            if (Utils.LyricsManager.Instance.IsPlaying)
+            {
+                if (Service.Configuration.EnableVolumeOverrides)
+                {
+                    ApplyLyricVolumeOverrides();
+                }
+                else
+                {
+                    RestoreDefaultVolumes();
+                }
+            }
+        };
 
         Service.LyricsWindow = new LyricsWindow();
         WindowSystem.AddWindow(Service.LyricsWindow);
@@ -49,8 +65,13 @@ internal sealed class Plugin : IDalamudPlugin
         Utils.LyricsManager.Instance.PlayingChanged += playing =>
         {
             Service.LyricsWindow.IsOpen = playing;
-            if (!playing)
+            if (playing)
             {
+                ApplyLyricVolumeOverrides();
+            }
+            else
+            {
+                RestoreDefaultVolumes();
                 PlayCurrentBgm();
             }
         };
@@ -132,6 +153,57 @@ internal sealed class Plugin : IDalamudPlugin
         {
             Utils.LyricsManager.Instance.Stop();
         }
+    }
+
+    private void ApplyLyricVolumeOverrides()
+    {
+        if (!Service.Configuration.EnableVolumeOverrides)
+        {
+            return;
+        }
+
+        var volumeOverrides = new List<(string ConfigName, uint VolumeValue)>
+        {
+            ("SoundMaster", Service.Configuration.VolumeSoundMaster),
+            ("SoundBgm", Service.Configuration.VolumeSoundBgm),
+            ("SoundSe", Service.Configuration.VolumeSoundSe),
+            ("SoundVoice", Service.Configuration.VolumeSoundVoice),
+            ("SoundEnv", Service.Configuration.VolumeSoundEnv),
+            ("SoundSystem", Service.Configuration.VolumeSoundSystem),
+            ("SoundPerform", Service.Configuration.VolumeSoundPerform)
+        };
+
+        if (!_volumeOverridesApplied)
+        {
+            _savedVolumeDefaults.Clear();
+            foreach (var item in volumeOverrides)
+            {
+                _savedVolumeDefaults[item.ConfigName] = Service.GameConfig.System.GetUInt(item.ConfigName);
+            }
+        }
+
+        foreach (var item in volumeOverrides)
+        {
+            Service.GameConfig.System.Set(item.ConfigName, item.VolumeValue);
+        }
+
+        _volumeOverridesApplied = true;
+    }
+
+    private void RestoreDefaultVolumes()
+    {
+        if (!_volumeOverridesApplied)
+        {
+            return;
+        }
+
+        foreach (var saved in _savedVolumeDefaults)
+        {
+            Service.GameConfig.System.Set(saved.Key, saved.Value);
+        }
+
+        _savedVolumeDefaults.Clear();
+        _volumeOverridesApplied = false;
     }
 
     private async Task PlayCurrentBgmDelayed(ushort targetBgmId, int delayMs, CancellationToken token)
