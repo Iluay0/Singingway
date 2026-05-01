@@ -3,7 +3,7 @@
     <PropertyGroup>
         <Authors></Authors>
         <Company></Company>
-        <Version>0.5.0</Version>
+        <Version>0.5.0.0</Version>
         <Description>Ever wanted to sing along during savage progging, obliterating the ears of your static? Now you can!</Description>
         <Copyright></Copyright>
         <PackageProjectUrl>https://github.com/Iluay0/Singingway</PackageProjectUrl>
