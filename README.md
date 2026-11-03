@@ -22,21 +22,23 @@ Lyrics are written in JSON.
 By default, they are compiled into the plugin itself, but it is possible to set a folder for custom lyrics via the plugin's Development Settings.
 
 ```json
-[
-  { "Time": "00:00.00", "Text": "First line of the song" },
-  { "Time": "00:10.00", "Text": "Chorus starts" },
-  ...
-  { "Time": "01:58.00", "Text": "Last line of the song" },
-  { "Time": "02:00.00", "Text": "", "LoopToTime": "00:10.00" }
-]
+{
+  "ids": [20240, 20243],
+  "offsets": { "20243": -1.364 },
+  "loopLine": 0,
+  "lines": [
+    {
+      "text": "Long live the king!",
+      "time": "00:14.439",
+      "end": "00:16.627",
+      "words": ["00:14.439", "00:15.271", "00:15.712", "00:15.953"]
+    },
+    { "text": "Of our fallen brothers", "time": "01:00.045" }
+  ]
+}
 ```
 
-  * `Time`: Timestamp for the lyric (`MM:SS.ms`).
-  * `Text`: The lyric to display.
-  * `LoopToTime`: The exact timestamp the song jumps back to when it loops.
-
-**Note on Loops:**  
-To avoid frame-perfect desyncs, do not guess the loop times.  
-Extract the `LoopStartSample` and `LoopEndSample` from the track's `.scd` file to get the exact floating-point timestamps.  
-This can be done by using the [VFXEditor](https://github.com/0ceal0t/Dalamud-VFXEditor) plugin.
-Important: As long as the loop duration is correct, it is entirely possible to move it around in order to match a lyric timestamp. This is heavily recommended so the lyrics can display correctly when looping.
+  * `ids`: the BGM ids this file serves (the row ids of the game's BGM sheet).
+  * `offsets`: optional, seconds added to every time when the file is loaded for that id.
+  * `loopLine`: optional, index of the first line after the song loops. The loop point of the track is then anchored to that line's time.
+  * `lines`: `text` and `time` (`MM:SS.mmm`) are required. `end` is optional. `words` is optional; it holds one time per space-separated word of `text`, in order. A line without `words`, or whose word count does not match, is highlighted as a whole.

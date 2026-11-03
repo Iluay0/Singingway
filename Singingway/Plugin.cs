@@ -4,14 +4,11 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using Singingway.Utils;
 using Singingway.Windows.Config;
 using Singingway.Windows.Lyrics;
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Singingway;
 internal sealed class Plugin : IDalamudPlugin
@@ -24,11 +21,9 @@ internal sealed class Plugin : IDalamudPlugin
 
     public WindowSystem WindowSystem { get; } = new("Singingway");
 
-    private const int SongFadeDurationMs = 1500;
-    private CancellationTokenSource? _songDelayTokenSource;
-
-    private bool _wasLoading = false;
     private ushort _currentBgmId = 0;
+    private string _currentBgmFile = string.Empty;
+    private bool _pendingLyricsStart = false;
     private readonly Dictionary<string, uint> _savedVolumeDefaults = new();
     private bool _volumeOverridesApplied = false;
 
@@ -46,6 +41,8 @@ internal sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(Service.ConfigWindow);
         Service.ConfigWindow.OnConfigChanged += () =>
         {
+            LyricsLibrary.RebuildIfSettingsChanged();
+
             if (Utils.LyricsManager.Instance.IsPlaying)
             {
                 if (Service.Configuration.EnableVolumeOverrides)
@@ -79,9 +76,11 @@ internal sealed class Plugin : IDalamudPlugin
         pluginInterface.UiBuilder.Draw += DrawUI;
         pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
+        LyricsLibrary.Rebuild();
+
         Service.CommandManager.AddHandler(LyricsCommand, new CommandInfo(OnLyricsCommand)
         {
-            HelpMessage = "Singingway: /singingway start <bgmfile> | /singingway stop | /singingway config"
+            HelpMessage = "Singingway: /singingway start <bgmid> | /singingway stop | /singingway config"
         });
 
         Service.Framework.Update += OnFrameworkUpdate;
@@ -93,61 +92,48 @@ internal sealed class Plugin : IDalamudPlugin
 
     private void OnFrameworkUpdate(IFramework framework)
     {
-        LyricsManager.Instance.Update();
-
-        bool isLoading = IsLoadingScreen();
-        if (isLoading)
-        {
-            _wasLoading = true;
-            return;
-        }
-
         var playingBgmId = BgmHelper.GetActiveBgmId();
         if (playingBgmId != _currentBgmId)
         {
             var previousBgmId = _currentBgmId;
             _currentBgmId = playingBgmId;
+            _currentBgmFile = GetBgmFile(playingBgmId);
+            _pendingLyricsStart = playingBgmId != 0;
 
-            _songDelayTokenSource?.Cancel();
-            _songDelayTokenSource = new CancellationTokenSource();
+            DebugOut(new SeStringBuilder().Append($"BGM changed from {previousBgmId} to {_currentBgmId} ({_currentBgmFile})").BuiltString);
 
-            int delayMs = GetTransitionDelay(previousBgmId, _currentBgmId, _wasLoading);
-            DebugOut(new SeStringBuilder().Append($"BGM changed from {previousBgmId} to {_currentBgmId}, applying delay of {delayMs}ms").BuiltString);
-            _ = PlayCurrentBgmDelayed(_currentBgmId, delayMs, _songDelayTokenSource.Token);
+            if (playingBgmId == 0)
+            {
+                Utils.LyricsManager.Instance.Stop();
+            }
         }
 
-        _wasLoading = false;
+        SongClock.Instance.Update(_currentBgmFile);
+
+        if (_pendingLyricsStart && (string.IsNullOrEmpty(_currentBgmFile) || SongClock.Instance.IsTracking(_currentBgmFile)))
+        {
+            _pendingLyricsStart = false;
+            PlayCurrentBgm();
+        }
+
+        LyricsManager.Instance.Update();
     }
 
-    private unsafe bool IsLoadingScreen()
+    private static string GetBgmFile(ushort bgmId)
     {
-        var titleCard = (AtkUnitBase*)Service.GameGui.GetAddonByName("_LocationTitle").Address;
-        var blackScreen = (AtkUnitBase*)Service.GameGui.GetAddonByName("FadeMiddle").Address;
-        return titleCard != null && titleCard->IsVisible || blackScreen != null && blackScreen->IsVisible;
-    }
+        if (bgmId == 0)
+            return string.Empty;
 
-    private int GetTransitionDelay(ushort previousBgmId, ushort currentBgmId, bool wasLoading)
-    {
-        if (wasLoading) return 0;
-        return SongFadeDurationMs;
+        var bgmSheet = Service.DataManager.GetExcelSheet<Lumina.Excel.Sheets.BGM>();
+        var bgmRow = bgmSheet?.GetRowOrDefault(bgmId);
+        return bgmRow?.File.ToString() ?? string.Empty;
     }
 
     private void PlayCurrentBgm()
     {
         if (_currentBgmId != 0)
         {
-            var bgmSheet = Service.DataManager.GetExcelSheet<Lumina.Excel.Sheets.BGM>();
-            var bgmRow = bgmSheet?.GetRowOrDefault(_currentBgmId);
-
-            var fileName = bgmRow?.File.ToString();
-            if (!string.IsNullOrEmpty(fileName))
-            {
-                Utils.LyricsManager.Instance.Start(fileName);
-            }
-            else
-            {
-                Utils.LyricsManager.Instance.Start(_currentBgmId.ToString());
-            }
+            Utils.LyricsManager.Instance.Start(_currentBgmId, _currentBgmFile);
         }
         else
         {
@@ -206,27 +192,6 @@ internal sealed class Plugin : IDalamudPlugin
         _volumeOverridesApplied = false;
     }
 
-    private async Task PlayCurrentBgmDelayed(ushort targetBgmId, int delayMs, CancellationToken token)
-    {
-        try
-        {
-            if (targetBgmId == 0)
-            {
-                Utils.LyricsManager.Instance.Stop();
-                return;
-            }
-
-            await Task.Delay(delayMs, token);
-
-            token.ThrowIfCancellationRequested();
-            PlayCurrentBgm();
-        }
-        catch (TaskCanceledException)
-        {
-
-        }
-    }
-
     public static void ChatOut(SeString message)
     {
         var sb = new SeStringBuilder().AddUiForeground("[Singingway] ", 58).Append(message);
@@ -266,15 +231,17 @@ internal sealed class Plugin : IDalamudPlugin
         var parts = (args ?? string.Empty).Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
-            ChatOut(new SeStringBuilder().Append("Usage: /singingway start <bgmfile> | /singingway stop | /singingway config").BuiltString);
+            ChatOut(new SeStringBuilder().Append("Usage: /singingway start <bgmid> | /singingway stop | /singingway config").BuiltString);
             return;
         }
 
         var sub = parts[0].ToLowerInvariant();
         if (sub == "start")
         {
-            if (parts.Length > 1)
-                Utils.LyricsManager.Instance.Start(parts[1]);
+            if (parts.Length > 1 && ushort.TryParse(parts[1].Trim(), out var bgmId))
+                Utils.LyricsManager.Instance.Start(bgmId, GetBgmFile(bgmId));
+            else
+                ChatOut(new SeStringBuilder().Append("Usage: /singingway start <bgmid>").BuiltString);
             return;
         }
         if (sub == "stop")

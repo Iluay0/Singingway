@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Text;
 
 namespace Singingway.Utils;
 public static class Text
@@ -90,6 +91,13 @@ public static class Text
 
         while (i < text.Length)
         {
+            if (i < text.Length - 1 && text[i] == '\\' && IsEscapable(text[i + 1]))
+            {
+                FlushText(i);
+                lastTextStart = i + 1;
+                i += 2;
+                continue;
+            }
             if (i < text.Length - 1 && text[i] == '*' && text[i + 1] == '*')
             {
                 FlushText(i);
@@ -132,6 +140,20 @@ public static class Text
 
         FlushText(text.Length);
         return fragments;
+    }
+
+    private static bool IsEscapable(char c) => c is '*' or '_' or '<' or '\\';
+
+    public static string Unescape(string text)
+    {
+        var sb = new StringBuilder(text.Length);
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '\\' && i < text.Length - 1 && IsEscapable(text[i + 1]))
+                i++;
+            sb.Append(text[i]);
+        }
+        return sb.ToString();
     }
 
     private static Vector4? ParseHexColor(string hex)

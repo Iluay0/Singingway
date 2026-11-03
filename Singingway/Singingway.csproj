@@ -3,27 +3,16 @@
     <PropertyGroup>
         <Authors></Authors>
         <Company></Company>
-        <Version>0.5.0.0</Version>
+        <Version>0.6.0.0</Version>
         <Description>Ever wanted to sing along during savage progging, obliterating the ears of your static? Now you can!</Description>
         <Copyright></Copyright>
         <PackageProjectUrl>https://github.com/Iluay0/Singingway</PackageProjectUrl>
-        <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <IsPackable>false</IsPackable>
         <TargetFramework>net10.0-windows7.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX4_MoE_04.json" />
-    </ItemGroup>
-    <ItemGroup>
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX4_MoE_08.json" />
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_20.json" />
-    </ItemGroup>
-    <ItemGroup>
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_04.json" />
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_24.json" />
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_25.json" />
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_26.json" />
-      <EmbeddedResource Include="Resources\Lyrics\BGM_EX5_Raid_27.json" />
+      <EmbeddedResource Include="Resources\Lyrics\*.json" />
     </ItemGroup>
 
     <ItemGroup>
