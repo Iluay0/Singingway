@@ -38,20 +38,24 @@ jobs:
           published=$(jq -r '.[0].AssemblyVersion' repo.json)
           if [ "$built" != "$published" ]; then echo "RELEASE_VERSION=$built" >> "$GITHUB_ENV"; fi
 
+      - name: Rename asset
+        if: env.RELEASE_VERSION != ''
+        run: cp Singingway/bin/Release/Singingway/latest.zip Singingway/bin/Release/Singingway/Singingway.zip
+
       - name: Create release
         if: env.RELEASE_VERSION != ''
         uses: softprops/action-gh-release@v2
         with:
-          files: Singingway/bin/Release/Singingway/latest.zip
-          name: Singingway ${{ env.RELEASE_VERSION }}
-          tag_name: v${{ env.RELEASE_VERSION }}
+          files: Singingway/bin/Release/Singingway/Singingway.zip
+          name: ${{ env.RELEASE_VERSION }}
+          tag_name: ${{ env.RELEASE_VERSION }}
           generate_release_notes: true
           fail_on_unmatched_files: true
 
       - name: Update repo.json
         if: env.RELEASE_VERSION != ''
         run: |
-          url="https://github.com/${{ github.repository }}/releases/download/v${RELEASE_VERSION}/latest.zip"
+          url="https://github.com/${{ github.repository }}/releases/download/${RELEASE_VERSION}/Singingway.zip"
           jq --arg v "$RELEASE_VERSION" --arg url "$url" \
             '.[0].AssemblyVersion = $v | .[0].TestingAssemblyVersion = $v | .[0].DownloadLinkInstall = $url | .[0].DownloadLinkUpdate = $url | .[0].DownloadLinkTesting = $url | .[0].LastUpdate = (now | floor | tostring)' \
             repo.json > repo.tmp && mv repo.tmp repo.json
